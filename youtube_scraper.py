@@ -21,7 +21,7 @@ from googleapiclient.discovery import build
 # CONFIG — edit these
 # ----------------------------
 
-API_KEY = os.environ.get("YOUTUBE_API_KEY", "AIzaSyBM4xWPNu3UBWZ45dLulsJHD2o2nVxfluY")
+API_KEY = os.environ.get("YOUTUBE_API_KEY", "")
 
 CHANNELS = [
     # Competitors
