@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YouTube Brand Intelligence</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f0f13; color: #e0e0e0; min-height: 100vh; }
+  header { background: #1a1a24; border-bottom: 1px solid #2a2a3a; padding: 20px 32px; display: flex; justify-content: space-between; align-items: center; }
+  header h1 { font-size: 20px; font-weight: 600; color: #fff; letter-spacing: -0.3px; }
+  header span { font-size: 12px; color: #666; }
+  .container { max-width: 1300px; margin: 0 auto; padding: 28px 32px; }
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .card { background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 10px; padding: 20px; }
+  .card .label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .card .value { font-size: 28px; font-weight: 700; color: #fff; }
+  .card .sub { font-size: 12px; color: #888; margin-top: 4px; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+  .tab { padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: #888; transition: all 0.15s; }
+  .tab.active { background: #2a2a3a; color: #fff; }
+  .tab:hover:not(.active) { color: #ccc; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .toolbar { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+  .toolbar input { background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 6px; padding: 8px 12px; color: #e0e0e0; font-size: 13px; width: 240px; outline: none; }
+  .toolbar input:focus { border-color: #4a4a6a; }
+  .toolbar select { background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 6px; padding: 8px 12px; color: #e0e0e0; font-size: 13px; outline: none; cursor: pointer; }
+  .count { font-size: 12px; color: #666; margin-left: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #1a1a24; color: #888; font-weight: 500; text-align: left; padding: 10px 12px; border-bottom: 1px solid #2a2a3a; cursor: pointer; white-space: nowrap; user-select: none; }
+  th:hover { color: #ccc; }
+  th.sorted-asc::after { content: " ↑"; color: #6c8fff; }
+  th.sorted-desc::after { content: " ↓"; color: #6c8fff; }
+  td { padding: 10px 12px; border-bottom: 1px solid #1e1e28; vertical-align: middle; }
+  tr:hover td { background: #1e1e2a; }
+  .title-cell { max-width: 340px; }
+  .title-cell a { color: #8ab4f8; text-decoration: none; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; }
+  .title-cell a:hover { color: #aac8ff; }
+  .channel-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .views { font-weight: 600; color: #fff; }
+  .date { color: #666; white-space: nowrap; }
+  .chart-wrap { background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 10px; padding: 24px; margin-bottom: 24px; }
+  .chart-wrap h3 { font-size: 14px; font-weight: 600; color: #ccc; margin-bottom: 20px; }
+  .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+  .empty { text-align: center; padding: 48px; color: #555; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>YouTube Brand Intelligence</h1>
+  <span>Last updated: May 11, 2026 at 09:13 PM</span>
+</header>
+
+<div class="container">
+
+  <div class="cards" id="summary-cards"></div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('competitors')">Competitor Channels</button>
+    <button class="tab" onclick="switchTab('trends')">Trending Trades</button>
+    <button class="tab" onclick="switchTab('charts')">Charts</button>
+  </div>
+
+  <!-- Competitors Panel -->
+  <div class="panel active" id="panel-competitors">
+    <div class="toolbar">
+      <input type="text" id="comp-search" placeholder="Search titles..." oninput="renderCompetitors()">
+      <select id="comp-channel" onchange="renderCompetitors()"><option value="">All channels</option></select>
+      <span class="count" id="comp-count"></span>
+    </div>
+    <table id="comp-table">
+      <thead>
+        <tr>
+          <th onclick="sortTable('competitors','title')">Title</th>
+          <th onclick="sortTable('competitors','channel')">Channel</th>
+          <th onclick="sortTable('competitors','views')">Views</th>
+          <th onclick="sortTable('competitors','likes')">Likes</th>
+          <th onclick="sortTable('competitors','comments')">Comments</th>
+          <th onclick="sortTable('competitors','published_at')">Published</th>
+        </tr>
+      </thead>
+      <tbody id="comp-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Trending Panel -->
+  <div class="panel" id="panel-trends">
+    <div class="toolbar">
+      <input type="text" id="trend-search" placeholder="Search titles..." oninput="renderTrends()">
+      <select id="trend-keyword" onchange="renderTrends()"><option value="">All keywords</option></select>
+      <span class="count" id="trend-count"></span>
+    </div>
+    <table id="trend-table">
+      <thead>
+        <tr>
+          <th onclick="sortTable('trends','title')">Title</th>
+          <th onclick="sortTable('trends','channel')">Channel</th>
+          <th onclick="sortTable('trends','source')">Keyword</th>
+          <th onclick="sortTable('trends','views')">Views</th>
+          <th onclick="sortTable('trends','likes')">Likes</th>
+          <th onclick="sortTable('trends','published_at')">Published</th>
+        </tr>
+      </thead>
+      <tbody id="trend-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Charts Panel -->
+  <div class="panel" id="panel-charts">
+    <div class="chart-row">
+      <div class="chart-wrap">
+        <h3>Avg Views per Video by Channel</h3>
+        <canvas id="chart-avg-views" height="220"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <h3>Videos Posted (Last 90 Days) by Channel</h3>
+        <canvas id="chart-video-count" height="220"></canvas>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <h3>Top 10 Trending Trades Videos by Views</h3>
+      <canvas id="chart-top-trends" height="160"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const RAW = [{"source": "channel", "channel": "Housecall Pro", "video_id": "d4c8AhQtyHA", "title": "How to Get More Reviews Automatically | Housecall Pro Review Management Guide", "published_at": "2026-05-08", "views": 84, "likes": 3, "comments": 0, "duration": "PT4M25S", "url": "https://youtube.com/watch?v=d4c8AhQtyHA"}, {"source": "channel", "channel": "Housecall Pro", "video_id": "yi6PI8shnx4", "title": "Pro Power Hour: Dispatching and April Platform Updates", "published_at": "2026-05-05", "views": 163, "likes": 4, "comments": 0, "duration": "PT31M23S", "url": "https://youtube.com/watch?v=yi6PI8shnx4"}, {"source": "channel", "channel": "Housecall Pro", "video_id": "iRYMFAtnBgU", "title": "Pro Power Hour: Job Inbox", "published_at": "2026-04-30", "views": 151, "likes": 1, "comments": 0, "duration": "PT51M46S", "url": "https://youtube.com/watch?v=iRYMFAtnBgU"}, {"source": "channel", "channel": "Housecall Pro", "video_id": "Og4AmFZrBZQ", "title": "Pro Power Hour: Jobs and Job Fields", "published_at": "2026-03-31", "views": 352, "likes": 4, "comments": 0, "duration": "PT40M12S", "url": "https://youtube.com/watch?v=Og4AmFZrBZQ"}, {"source": "channel", "channel": "Housecall Pro", "video_id": "EeDc3CfDy0Q", "title": "How 200 Google Reviews Changed His Dryer Vent Business", "published_at": "2026-03-12", "views": 63, "likes": 1, "comments": 0, "duration": "PT7M26S", "url": "https://youtube.com/watch?v=EeDc3CfDy0Q"}, {"source": "channel", "channel": "Housecall Pro", "video_id": "1tEhtJFkmmw", "title": "Pro Power Hour: Sub-Customers and Property Profiles", "published_at": "2026-02-27", "views": 210, "likes": 2, "comments": 0, "duration": "PT34M9S", "url": "https://youtube.com/watch?v=1tEhtJFkmmw"}, {"source": "channel", "channel": "Housecall Pro", "video_id": "Zh6jotNjt5c", "title": "Pro Power Hour: Cyber Security Tips", "published_at": "2026-02-27", "views": 50, "likes": 1, "comments": 0, "duration": "PT41M44S", "url": "https://youtube.com/watch?v=Zh6jotNjt5c"}, {"source": "channel", "channel": "Jobber", "video_id": "Kn--MZ5i_aw", "title": "Still Guessing Your Prices? Use This Profit Formula", "published_at": "2026-02-03", "views": 464, "likes": 13, "comments": 5, "duration": "PT26M13S", "url": "https://youtube.com/watch?v=Kn--MZ5i_aw"}, {"source": "channel", "channel": "Jobber", "video_id": "RJj3rIjClXw", "title": "What Skipping Time Tracking Is Really Costing You", "published_at": "2026-01-06", "views": 660, "likes": 10, "comments": 0, "duration": "PT27M59S", "url": "https://youtube.com/watch?v=RJj3rIjClXw"}, {"source": "channel", "channel": "ServiceTitan", "video_id": "1gcN_g1FcAo", "title": "Transforming Raw Data into Actionable Business Strategy | Podcast Ep. 274 | Toolbox for the Trades", "published_at": "2026-04-21", "views": 61, "likes": 1, "comments": 0, "duration": "PT28M13S", "url": "https://youtube.com/watch?v=1gcN_g1FcAo"}, {"source": "channel", "channel": "ServiceTitan", "video_id": "mlo78oanWY4", "title": "Navigating the New Dispatch Board: Efficiency at Your Fingertips | Podcast Ep.84", "published_at": "2026-04-16", "views": 171, "likes": 3, "comments": 0, "duration": "PT23M28S", "url": "https://youtube.com/watch?v=mlo78oanWY4"}, {"source": "channel", "channel": "ServiceTitan", "video_id": "4pqAO1XDUAM", "title": "A $48 Million Mission to Make the Garage Door Industry Sexy | Podcast EP. 272|Toolbox for the Trades", "published_at": "2026-04-14", "views": 95, "likes": 2, "comments": 1, "duration": "PT30M42S", "url": "https://youtube.com/watch?v=4pqAO1XDUAM"}, {"source": "channel", "channel": "ServiceTitan", "video_id": "uo41aMA9zag", "title": "AI Readiness: Preparing Your Foundation for ServiceTitan AI | Podcast Ep. 83 |Mastering ServiceTitan", "published_at": "2026-04-09", "views": 97, "likes": 2, "comments": 0, "duration": "PT28M37S", "url": "https://youtube.com/watch?v=uo41aMA9zag"}, {"source": "channel", "channel": "ServiceTitan", "video_id": "1VFx1r4HhfM", "title": "Just Start AI: Future-Proofing Your Business with Artificial Intelligence | Podcast Ep. 271", "published_at": "2026-04-07", "views": 139, "likes": 3, "comments": 1, "duration": "PT44M", "url": "https://youtube.com/watch?v=1VFx1r4HhfM"}, {"source": "channel", "channel": "Workiz", "video_id": "0DCDQbdfWgA", "title": "Automatically reconciling credit card payouts with QuickBooks Online", "published_at": "2026-03-20", "views": 122, "likes": 1, "comments": 0, "duration": "PT3M28S", "url": "https://youtube.com/watch?v=0DCDQbdfWgA"}, {"source": "channel", "channel": "Workiz", "video_id": "FlSouL_lYzY", "title": "How to Get SO Many Customers with AI & CRM: The 2026 Growth Blueprint", "published_at": "2026-03-20", "views": 75, "likes": 1, "comments": 2, "duration": "PT52M48S", "url": "https://youtube.com/watch?v=FlSouL_lYzY"}, {"source": "channel", "channel": "Workiz", "video_id": "zHOP6dgjjPM", "title": "Top Ways How to Scale a Home Service Business: From Technician to CEO | Workiz", "published_at": "2026-03-09", "views": 81, "likes": 0, "comments": 0, "duration": "PT48M11S", "url": "https://youtube.com/watch?v=zHOP6dgjjPM"}, {"source": "channel", "channel": "Workiz", "video_id": "n_U54uFK8nk", "title": "Close bigger jobs: How to master consumer financing & beat price haggling", "published_at": "2026-02-12", "views": 57, "likes": 0, "comments": 0, "duration": "PT57M44S", "url": "https://youtube.com/watch?v=n_U54uFK8nk"}, {"source": "channel", "channel": "Workiz", "video_id": "-4vzSeazkuc", "title": "AI, FSM, and marketing for replacement sales", "published_at": "2025-12-11", "views": 142, "likes": 0, "comments": 0, "duration": "PT1H37S", "url": "https://youtube.com/watch?v=-4vzSeazkuc"}, {"source": "channel", "channel": "Workiz", "video_id": "YjPYQWvEbuM", "title": "Getting your ducks in a row: How to legally protect and grow your home-service business", "published_at": "2025-11-13", "views": 165, "likes": 11, "comments": 0, "duration": "PT40M8S", "url": "https://youtube.com/watch?v=YjPYQWvEbuM"}, {"source": "channel", "channel": "Electrician U", "video_id": "aANfZoFYcHg", "title": "Which Multimeter Should an Apprentice Electrician Buy First?", "published_at": "2026-04-27", "views": 15248, "likes": 654, "comments": 38, "duration": "PT18M24S", "url": "https://youtube.com/watch?v=aANfZoFYcHg"}, {"source": "channel", "channel": "Electrician U", "video_id": "1oGX0ihOUl4", "title": "MC Cable vs AC Cable: Are They the Same Thing?", "published_at": "2026-03-30", "views": 31969, "likes": 1195, "comments": 66, "duration": "PT26M45S", "url": "https://youtube.com/watch?v=1oGX0ihOUl4"}, {"source": "channel", "channel": "Electrician U", "video_id": "bo8B3S-hfN0", "title": "Voltage vs Amperage vs Wattage vs Ohmage?", "published_at": "2026-01-26", "views": 36686, "likes": 1529, "comments": 110, "duration": "PT17M31S", "url": "https://youtube.com/watch?v=bo8B3S-hfN0"}, {"source": "channel", "channel": "Electrician U", "video_id": "PJWSare36bY", "title": "Splices And Terminations That Fail Code In The 2026 NEC", "published_at": "2026-01-19", "views": 71336, "likes": 2486, "comments": 258, "duration": "PT22M18S", "url": "https://youtube.com/watch?v=PJWSare36bY"}, {"source": "channel", "channel": "Electrician U", "video_id": "Q7_3LMNhkZA", "title": "Upgrading Your Electrical Panel to 400 Amps | Cost Breakdown", "published_at": "2026-01-06", "views": 89604, "likes": 2132, "comments": 397, "duration": "PT20M43S", "url": "https://youtube.com/watch?v=Q7_3LMNhkZA"}, {"source": "channel", "channel": "Electrician U", "video_id": "Tz2ZzctgEAw", "title": "Does More Current Mean Faster Electrons or More Electrons?", "published_at": "2025-12-15", "views": 26503, "likes": 1021, "comments": 154, "duration": "PT9M28S", "url": "https://youtube.com/watch?v=Tz2ZzctgEAw"}, {"source": "channel", "channel": "Electrician U", "video_id": "WAbo0-g3Fog", "title": "WAGO Connectors are a GAME CHANGER When Wires are Too Short", "published_at": "2025-12-08", "views": 54491, "likes": 1662, "comments": 175, "duration": "PT7M10S", "url": "https://youtube.com/watch?v=WAbo0-g3Fog"}, {"source": "channel", "channel": "Electrician U", "video_id": "hBDPRx9_LKM", "title": "How Circuit Breakers REALLY Work In Your Home Panel", "published_at": "2025-12-01", "views": 17656, "likes": 808, "comments": 52, "duration": "PT11M24S", "url": "https://youtube.com/watch?v=hBDPRx9_LKM"}, {"source": "channel", "channel": "Electrician U", "video_id": "4M0KXs574_c", "title": "What I Wish My Son Knew About Mastery", "published_at": "2025-11-24", "views": 11394, "likes": 461, "comments": 51, "duration": "PT11M8S", "url": "https://youtube.com/watch?v=4M0KXs574_c"}, {"source": "channel", "channel": "Carl Murawski", "video_id": "bH1WcwDYYFQ", "title": "The best work boots ($600-$1,000)", "published_at": "2026-05-06", "views": 6073, "likes": 193, "comments": 9, "duration": "PT3M", "url": "https://youtube.com/watch?v=bH1WcwDYYFQ"}, {"source": "channel", "channel": "Carl Murawski", "video_id": "8x_U4o24hoc", "title": "The Best Work Boots at Every Price (Don\u2019t Waste Your Money)", "published_at": "2026-05-01", "views": 18021, "likes": 623, "comments": 108, "duration": "PT13M52S", "url": "https://youtube.com/watch?v=8x_U4o24hoc"}, {"source": "channel", "channel": "Carl Murawski", "video_id": "M4gAKQg5cVs", "title": "Why Pros Carry Fewer Tools", "published_at": "2026-04-26", "views": 54914, "likes": 738, "comments": 84, "duration": "PT14M45S", "url": "https://youtube.com/watch?v=M4gAKQg5cVs"}, {"source": "channel", "channel": "Carl Murawski", "video_id": "rSVswuZzIUY", "title": "What's in my tool bag?", "published_at": "2026-04-25", "views": 23882, "likes": 1119, "comments": 40, "duration": "PT3M", "url": "https://youtube.com/watch?v=rSVswuZzIUY"}, {"source": "channel", "channel": "Carl Murawski", "video_id": "MkGav0CIVlQ", "title": "Limmer: Are These the Best Hiking Boots Ever Made?", "published_at": "2026-04-12", "views": 56266, "likes": 1829, "comments": 162, "duration": "PT23M40S", "url": "https://youtube.com/watch?v=MkGav0CIVlQ"}, {"source": "channel", "channel": "Carl Murawski", "video_id": "XkhxsPNZ9Jc", "title": "American vs European Workwear: What Actually Works?", "published_at": "2026-04-05", "views": 212866, "likes": 5003, "comments": 966, "duration": "PT9M51S", "url": "https://youtube.com/watch?v=XkhxsPNZ9Jc"}, {"source": "channel", "channel": "Carl Murawski", "video_id": "fZnJOtwYEyg", "title": "NEW Carhartt Rugged Flex Jeans: Who They\u2019re Actually For", "published_at": "2026-03-20", "views": 18195, "likes": 624, "comments": 96, "duration": "PT9M23S", "url": "https://youtube.com/watch?v=fZnJOtwYEyg"}, {"source": "channel", "channel": "Carl Murawski", "video_id": "abBkvsk9ivE", "title": "The field vs the office", "published_at": "2026-03-01", "views": 3770, "likes": 208, "comments": 24, "duration": "PT13M10S", "url": "https://youtube.com/watch?v=abBkvsk9ivE"}, {"source": "channel", "channel": "Carl Murawski", "video_id": "S48muENO4NA", "title": "Where I've been", "published_at": "2026-02-27", "views": 20224, "likes": 1165, "comments": 125, "duration": "PT3M", "url": "https://youtube.com/watch?v=S48muENO4NA"}, {"source": "channel", "channel": "Carl Murawski", "video_id": "jb4VxTirBEQ", "title": "Is the Leatherman ARC Perfect?", "published_at": "2026-02-15", "views": 4412, "likes": 221, "comments": 8, "duration": "PT3M", "url": "https://youtube.com/watch?v=jb4VxTirBEQ"}, {"source": "search: HVAC tips", "channel": "Dr. Nick Survival ", "video_id": "siBBCap_Z-s", "title": "Cool ANY Room 15\u00b0 for Free. No AC. No Fan. No Electricity. The 3-Minute Setup.", "published_at": "2026-03-14", "views": 894802, "likes": 31805, "comments": 766, "duration": "PT12M59S", "url": "https://youtube.com/watch?v=siBBCap_Z-s"}, {"source": "search: HVAC tips", "channel": "How To Home", "video_id": "psieFs6qG3I", "title": "These 3 Simple AC Tricks Save Hundreds in Repair Bills!", "published_at": "2026-03-28", "views": 275561, "likes": 8360, "comments": 365, "duration": "PT14M23S", "url": "https://youtube.com/watch?v=psieFs6qG3I"}, {"source": "search: HVAC tips", "channel": "The DIY HVAC Guy", "video_id": "xnwsmSacQyY", "title": "This New HVAC Fitting Might Replace Brazing Forever", "published_at": "2026-04-04", "views": 220377, "likes": 6221, "comments": 950, "duration": "PT12M11S", "url": "https://youtube.com/watch?v=xnwsmSacQyY"}, {"source": "search: HVAC tips", "channel": "Shifa air care", "video_id": "VIGElFQNODQ", "title": "Panasonic NanoeX Split AC 1.5 Ton Installation Full Review | Air Conditioner | Panasonic |Split ", "published_at": "2026-04-03", "views": 37814, "likes": 317, "comments": 68, "duration": "PT14M56S", "url": "https://youtube.com/watch?v=VIGElFQNODQ"}, {"source": "search: HVAC tips", "channel": "Taddy Digest", "video_id": "HbMqTEDxPGA", "title": "How to Read HVAC Schematics (Beginner to Pro \u2013 Furnace & AC Explained)", "published_at": "2026-04-17", "views": 31783, "likes": 2412, "comments": 89, "duration": "PT15M35S", "url": "https://youtube.com/watch?v=HbMqTEDxPGA"}, {"source": "search: HVAC tips", "channel": "The Rot Report", "video_id": "6JCUfmtolSg", "title": "12 Brand New HVAC Systems Nobody Wants in 2026 \u2014 ROTTING in Warehouses", "published_at": "2026-05-07", "views": 9507, "likes": 70, "comments": 16, "duration": "PT10M6S", "url": "https://youtube.com/watch?v=6JCUfmtolSg"}, {"source": "search: HVAC tips", "channel": "O JAM 1 AC Repairing", "video_id": "HvmDdX_yJ60", "title": "Voltas window ac deep clean Service / Learn Window AC Servicing full process hindi", "published_at": "2026-03-04", "views": 8206, "likes": 42, "comments": 5, "duration": "PT9M1S", "url": "https://youtube.com/watch?v=HvmDdX_yJ60"}, {"source": "search: HVAC tips", "channel": "HVAC Dean ", "video_id": "ahpY4KdkyLo", "title": "Ranking HVAC Jobs From Hardest to Easiest", "published_at": "2026-04-06", "views": 5790, "likes": 340, "comments": 96, "duration": "PT8M12S", "url": "https://youtube.com/watch?v=ahpY4KdkyLo"}, {"source": "search: HVAC tips", "channel": "HVAC School", "video_id": "mQCQuc95AW0", "title": "The Science Behind Torch Tips Every HVAC Tech Must Know", "published_at": "2026-05-03", "views": 4179, "likes": 250, "comments": 24, "duration": "PT19M21S", "url": "https://youtube.com/watch?v=mQCQuc95AW0"}, {"source": "search: HVAC tips", "channel": "HVAC School", "video_id": "DMo1FtdNWeg", "title": "Commercial HVAC Drain Cleaning: Pro Tips That Prevent Callbacks", "published_at": "2026-04-19", "views": 3200, "likes": 101, "comments": 9, "duration": "PT15M3S", "url": "https://youtube.com/watch?v=DMo1FtdNWeg"}, {"source": "search: plumbing tips", "channel": "Tips Unknown", "video_id": "-kK2oD4Q5TE", "title": "Genius Invention By 60-Year-Old Plumber! Endless Free Water Source from Plastic fruit crate/Cement", "published_at": "2026-02-12", "views": 5612649, "likes": 178428, "comments": 2836, "duration": "PT18M6S", "url": "https://youtube.com/watch?v=-kK2oD4Q5TE"}, {"source": "search: plumbing tips", "channel": "Tips Unknown", "video_id": "-QZqMT6W9ZQ", "title": "Genius Invention by a 60-Year-Old Plumber! 7 Free Recycling Ideas from Plastic Mesh & Old PVC Pipes", "published_at": "2026-03-21", "views": 3397480, "likes": 132268, "comments": 1947, "duration": "PT18M2S", "url": "https://youtube.com/watch?v=-QZqMT6W9ZQ"}, {"source": "search: plumbing tips", "channel": "Tips Unknown", "video_id": "dHjYNPZHz18", "title": "The crazy idea of \u200b\u200ba 60 year old plumber! Endless Free Water Source From tires and PVC!", "published_at": "2026-03-10", "views": 768064, "likes": 25112, "comments": 244, "duration": "PT18M2S", "url": "https://youtube.com/watch?v=dHjYNPZHz18"}, {"source": "search: plumbing tips", "channel": "Mark Silverbridge Plumbing", "video_id": "HsOr7vpQUGg", "title": "The REAL Reason S-Traps Are No Longer ALLOWED In Any Home!", "published_at": "2026-03-18", "views": 406498, "likes": 7772, "comments": 292, "duration": "PT19M48S", "url": "https://youtube.com/watch?v=HsOr7vpQUGg"}, {"source": "search: plumbing tips", "channel": "Roger the Pipe Guy", "video_id": "hebGJ43lQ6s", "title": "In 45 Years of Plumbing, I've Never Had a Clogged Drain \u2014 Here's Exactly What I Do", "published_at": "2026-04-30", "views": 338834, "likes": 5848, "comments": 114, "duration": "PT19M5S", "url": "https://youtube.com/watch?v=hebGJ43lQ6s"}, {"source": "search: plumbing tips", "channel": "Tips Unknown", "video_id": "KBMsVTBnDOo", "title": "The crazy idea of \u200b\u200ba 60-year-old plumber! Free energy source from old toilet and Cement!", "published_at": "2026-04-23", "views": 257076, "likes": 3702, "comments": 26, "duration": "PT17M4S", "url": "https://youtube.com/watch?v=KBMsVTBnDOo"}, {"source": "search: plumbing tips", "channel": "EFE UNO JOAQUIN", "video_id": "vzP0bvsbC6A", "title": "\u00bfPUEDE SER EL ADIOS A LAS FUGAS DE AGUA?", "published_at": "2026-03-05", "views": 183257, "likes": 6401, "comments": 275, "duration": "PT10M3S", "url": "https://youtube.com/watch?v=vzP0bvsbC6A"}, {"source": "search: plumbing tips", "channel": "Tips Unknown", "video_id": "PXAo-qiNQWs", "title": "Genius Invention by a 60-Year-Old Plumber! 9 Free Recycling Ideas from Cement & Old Washing Machine", "published_at": "2026-03-31", "views": 186307, "likes": 4862, "comments": 42, "duration": "PT18M5S", "url": "https://youtube.com/watch?v=PXAo-qiNQWs"}, {"source": "search: plumbing tips", "channel": "Tips Unknown", "video_id": "-oOanSULhz8", "title": "Amazing inventions of a 60-year-old plumber!endless source of free energy from empty plastic bottles", "published_at": "2026-02-17", "views": 139638, "likes": 6643, "comments": 31, "duration": "PT19M3S", "url": "https://youtube.com/watch?v=-oOanSULhz8"}, {"source": "search: plumbing tips", "channel": "Roger the Pipe Guy", "video_id": "DAZ4KZ6A5a0", "title": "SharkBite vs Solder - Which Is ACTUALLY Stronger! (Pressure Test!)", "published_at": "2026-04-17", "views": 131760, "likes": 2952, "comments": 312, "duration": "PT18M20S", "url": "https://youtube.com/watch?v=DAZ4KZ6A5a0"}, {"source": "search: electrician tips", "channel": "The DIY Guy", "video_id": "vUq1nmhRSYE", "title": "5 Electrical Hacks That Save Hundreds (DIY Friendly)", "published_at": "2026-04-25", "views": 420879, "likes": 12361, "comments": 860, "duration": "PT17M35S", "url": "https://youtube.com/watch?v=vUq1nmhRSYE"}, {"source": "search: electrician tips", "channel": "Solar and Electric tips", "video_id": "yC0hxvHVP24", "title": "DC wiring karne ka tarika || 340 watt solar panel per Kia Kia Chala sakte hain ", "published_at": "2026-03-11", "views": 189654, "likes": 2871, "comments": 361, "duration": "PT19M45S", "url": "https://youtube.com/watch?v=yC0hxvHVP24"}, {"source": "search: electrician tips", "channel": "Venki Technology \u2022 100k views \u2022 1 hour ago\n\n\n\n...", "video_id": "Z9ysuxpDTxM", "title": "How to use Induction Cooktop \ud83d\udd25 \u0c07\u0c02\u0c21\u0c15\u0c4d\u0c37\u0c28\u0c4d \u0c38\u0c4d\u0c1f\u0c35\u0c4d \u0c0e\u0c32\u0c3e \u0c35\u0c3e\u0c21\u0c3e\u0c32\u0c3f? Beginners Guide \ud83d\udd25 \u0c07\u0c32\u0c3e \u0c35\u0c3e\u0c21\u0c3f\u0c24\u0c47 \u0c15\u0c30\u0c46\u0c02\u0c1f\u0c4d \u0c38\u0c47\u0c35\u0c4d", "published_at": "2026-03-18", "views": 148706, "likes": 1988, "comments": 68, "duration": "PT5M16S", "url": "https://youtube.com/watch?v=Z9ysuxpDTxM"}, {"source": "search: electrician tips", "channel": "ElectroTest", "video_id": "08RnnEFtPrk", "title": "Electrician fixed burned-out box and tested wire heating", "published_at": "2026-03-18", "views": 71109, "likes": 1336, "comments": 228, "duration": "PT16M56S", "url": "https://youtube.com/watch?v=08RnnEFtPrk"}, {"source": "search: electrician tips", "channel": " ITI JOBS IG", "video_id": "kwQsyM_faAo", "title": "\u0915\u093f\u0924\u0928\u0947 mm \u0935\u093e\u092f\u0930 \u0915\u093f\u0924\u0928\u093e Load \u091d\u0947\u0932\u0924\u093e \u0939\u0948? | 1mm \u0938\u0947 6mm \u0924\u0915 \u092a\u0942\u0930\u093e \u0938\u091a \u26a1Wire Load Capacity ", "published_at": "2026-04-12", "views": 37604, "likes": 651, "comments": 32, "duration": "PT5M35S", "url": "https://youtube.com/watch?v=kwQsyM_faAo"}, {"source": "search: electrician tips", "channel": "Codezzy 2", "video_id": "ZEUsEaeEU_A", "title": "10 PRO TIPS For NEW TECHNICIAN SURVIVOR CLASS.. (Bite by Night)", "published_at": "2026-04-21", "views": 36265, "likes": 1246, "comments": 139, "duration": "PT13M39S", "url": "https://youtube.com/watch?v=ZEUsEaeEU_A"}, {"source": "search: electrician tips", "channel": "SLV Motor and Electrical Technical Work ", "video_id": "x3t-r6VA_X4", "title": "Submersible Motor Jam \u0c86\u0c97\u0cbf\u0ca6\u0ccd\u0cb0\u0cc6 \u0c88 \u0cb5\u0cbf\u0ca1\u0cbf\u0caf\u0ccb \u0ca8\u0ccb\u0ca1\u0cbf \ud83d\udcb8 Repair \u0c96\u0cb0\u0ccd\u0c9a\u0cc1 \u0ca4\u0caa\u0ccd\u0caa\u0cbf\u0cb8\u0cbf\u0c95\u0cca\u0cb3\u0ccd\u0cb3\u0cbf! | Borewell Motor Jam ", "published_at": "2026-03-02", "views": 33165, "likes": 332, "comments": 33, "duration": "PT4M56S", "url": "https://youtube.com/watch?v=x3t-r6VA_X4"}, {"source": "search: electrician tips", "channel": "Solar and Electric tips", "video_id": "SwP505Bqf8s", "title": "Ac dc fan vs inverter fan || Inverter fan or ac dc fan mein kya fark hai", "published_at": "2026-02-17", "views": 26359, "likes": 787, "comments": 150, "duration": "PT12M22S", "url": "https://youtube.com/watch?v=SwP505Bqf8s"}, {"source": "search: electrician tips", "channel": "PANDU ELECTRICIAN TELUGU ", "video_id": "_SdQNmoQIG8", "title": "1.0 \u0c35\u0c48\u0c30\u0c4d \u0c15\u0c47\u0c35\u0c32\u0c02 700 \u0c2e\u0c3e\u0c24\u0c43\u0c2e\u0c47 |CCA wire awareness video telugu |pandu electrician telugu ", "published_at": "2026-04-17", "views": 23826, "likes": 369, "comments": 17, "duration": "PT5M26S", "url": "https://youtube.com/watch?v=_SdQNmoQIG8"}, {"source": "search: electrician tips", "channel": "Electric Online", "video_id": "mqvqaq7r6j8", "title": "How to Identify Phase & Neutral Wire Easily \u26a1 Complete Wiring Guide for Beginners", "published_at": "2026-04-12", "views": 22373, "likes": 645, "comments": 92, "duration": "PT7M7S", "url": "https://youtube.com/watch?v=mqvqaq7r6j8"}, {"source": "search: field service business", "channel": "Microsoft Dynamics 365 Community", "video_id": "-djl4qlm2D0", "title": "Dynamics 365 Field Service, Human Resources, & Project Operations | 2026 Release Wave 1", "published_at": "2026-03-18", "views": 1148, "likes": 12, "comments": 0, "duration": "PT4M8S", "url": "https://youtube.com/watch?v=-djl4qlm2D0"}, {"source": "search: field service business", "channel": "Business Wali Smart Baate", "video_id": "vKrS0uSTrAE", "title": "Full Video | Stop Managing Blindly, Start Tracking Your Field Operations Smartly", "published_at": "2026-04-20", "views": 2897, "likes": 13, "comments": 4, "duration": "PT9M29S", "url": "https://youtube.com/watch?v=vKrS0uSTrAE"}, {"source": "search: field service business", "channel": "Odoo", "video_id": "pFSx7w-XmnE", "title": "Revamp Your Business: Odoo HVAC Configuration", "published_at": "2026-04-08", "views": 1010, "likes": 12, "comments": 2, "duration": "PT4M33S", "url": "https://youtube.com/watch?v=pFSx7w-XmnE"}, {"source": "search: field service business", "channel": "Service Business Academy", "video_id": "bmjHGrtHdHo", "title": "Jobber's BIGGEST Problem Exposed | Why I Left Jobber CRM", "published_at": "2026-02-27", "views": 902, "likes": 114, "comments": 120, "duration": "PT17M53S", "url": "https://youtube.com/watch?v=bmjHGrtHdHo"}, {"source": "search: field service business", "channel": "MyFin TV", "video_id": "JQFJxLOOnkY", "title": "1,400 \u0d15\u0d4b\u0d1f\u0d3f\u0d2f\u0d41\u0d1f\u0d46 \u0d35\u0d2e\u0d4d\u0d2a\u0d7b \u0d15\u0d30\u0d3e\u0d7c ! Deep Industries : Risk \u0d06\u0d23\u0d4b Opportunity \u0d06\u0d23\u0d4b? | Stock Discovery | MyFin TV", "published_at": "2026-05-09", "views": 1165, "likes": 38, "comments": 6, "duration": "PT12M4S", "url": "https://youtube.com/watch?v=JQFJxLOOnkY"}, {"source": "search: field service business", "channel": "Which CRM?", "video_id": "GqY6Fvwe3_4", "title": "Best CRM for a Roofing Business ", "published_at": "2026-02-17", "views": 737, "likes": 19, "comments": 4, "duration": "PT11M37S", "url": "https://youtube.com/watch?v=GqY6Fvwe3_4"}, {"source": "search: field service business", "channel": "KL 01 Motor Garage ", "video_id": "U28-6x19-DE", "title": "\u0d1f\u0d3e\u0d15\u0d4d\u0d38\u0d3f \u0d2b\u0d40\u0d7d\u0d21\u0d3f\u0d7d \u0d2a\u0d41\u0d24\u0d3f\u0d2f\u0d24\u0d3e\u0d23\u0d4b | Taxi Business Tips for Beginners Malayalam | Kerala Taxi field ", "published_at": "2026-03-07", "views": 763, "likes": 15, "comments": 7, "duration": "PT12M8S", "url": "https://youtube.com/watch?v=U28-6x19-DE"}, {"source": "search: field service business", "channel": "Business Solution", "video_id": "qIU6Hxkw5Is", "title": "Contractor Plus Review & Demo: Best Field Service Software for Contractors?", "published_at": "2026-04-02", "views": 821, "likes": 2, "comments": 14, "duration": "PT12M35S", "url": "https://youtube.com/watch?v=qIU6Hxkw5Is"}, {"source": "search: field service business", "channel": "FieldPulse", "video_id": "3BTIPnJQ83M", "title": "The Top 3 FSM Software of 2026 | FieldPulse vs Jobber vs Housecall Pro", "published_at": "2026-02-24", "views": 607, "likes": 11, "comments": 0, "duration": "PT10M30S", "url": "https://youtube.com/watch?v=3BTIPnJQ83M"}, {"source": "search: field service business", "channel": "Be Productive", "video_id": "ZAZ9gR5ZkqI", "title": "Connecteam - Best Field Service Management Software for 2026", "published_at": "2026-04-23", "views": 14358, "likes": 9, "comments": 28, "duration": "PT6M55S", "url": "https://youtube.com/watch?v=ZAZ9gR5ZkqI"}, {"source": "search: home service business", "channel": "Austin Evans", "video_id": "4zC1tn0cGoA", "title": "This $360 Box Replaces Every Streaming Service", "published_at": "2026-03-01", "views": 1758461, "likes": 34868, "comments": 3341, "duration": "PT15M34S", "url": "https://youtube.com/watch?v=4zC1tn0cGoA"}, {"source": "search: home service business", "channel": "Infinity info ", "video_id": "uVeNJCdaVC0", "title": "\ud83d\udd34Blinkit - Work from Home Job 2026 | Customer Care Executive | Remote Job \ud83d\udd25", "published_at": "2026-03-21", "views": 498383, "likes": 9582, "comments": 443, "duration": "PT6M6S", "url": "https://youtube.com/watch?v=uVeNJCdaVC0"}, {"source": "search: home service business", "channel": "Patrick Dang", "video_id": "gRcBu8LyfGo", "title": "How I'd Start a 1-Person Business With Claude AI in 30 Days", "published_at": "2026-04-06", "views": 373648, "likes": 15970, "comments": 373, "duration": "PT17M32S", "url": "https://youtube.com/watch?v=gRcBu8LyfGo"}, {"source": "search: home service business", "channel": "Shivansh B.", "video_id": "NIrUso-32Oo", "title": "I Tried Selling AI Websites to Indian Businesses (BRUTAL)", "published_at": "2026-02-13", "views": 371888, "likes": 16831, "comments": 1594, "duration": "PT17M32S", "url": "https://youtube.com/watch?v=NIrUso-32Oo"}, {"source": "search: home service business", "channel": "DIGITAL PATHSHALA", "video_id": "Wi-tVEZuAU4", "title": "How to Start Small Business at Home | Small Business Ideas at Home", "published_at": "2026-04-30", "views": 151157, "likes": 2576, "comments": 65, "duration": "PT9M48S", "url": "https://youtube.com/watch?v=Wi-tVEZuAU4"}, {"source": "search: home service business", "channel": "Baaten Bazar Ki (BBK)", "video_id": "U5l1yU-vP8w", "title": "Instant Help Services Boom, But Why Are Companies Still Losing Money? | By Ankit Sir", "published_at": "2026-05-11", "views": 63958, "likes": 2730, "comments": 106, "duration": "PT11M4S", "url": "https://youtube.com/watch?v=U5l1yU-vP8w"}, {"source": "search: home service business", "channel": "Hormozi Highlights", "video_id": "sw1yJanAA_U", "title": "How to Get More Leads in a Local Service Business", "published_at": "2026-03-21", "views": 34363, "likes": 715, "comments": 19, "duration": "PT7M10S", "url": "https://youtube.com/watch?v=sw1yJanAA_U"}, {"source": "search: home service business", "channel": "Johnny & Sergio", "video_id": "Q27nawB-BO0", "title": "The Simplest Service Business You Can Run From Your Laptop", "published_at": "2026-03-16", "views": 32160, "likes": 846, "comments": 70, "duration": "PT13M7S", "url": "https://youtube.com/watch?v=Q27nawB-BO0"}, {"source": "search: home service business", "channel": "Steve Hunsaker | Home Service Accelerator", "video_id": "mQoYVIyK3LU", "title": "How to Generate So Many Home Service Business Leads it Feels ILLEGAL", "published_at": "2026-04-06", "views": 15643, "likes": 655, "comments": 29, "duration": "PT12M30S", "url": "https://youtube.com/watch?v=mQoYVIyK3LU"}, {"source": "search: home service business", "channel": "Hormozi Highlights", "video_id": "_82BE6LZsAw", "title": "Helping a Service Business Owner Build Systems", "published_at": "2026-02-19", "views": 10365, "likes": 281, "comments": 15, "duration": "PT7M45S", "url": "https://youtube.com/watch?v=_82BE6LZsAw"}];
+const CHANNEL_COLORS = {};
+const PALETTE = ['#6c8fff','#ff6c8f','#6cffa0','#ffb86c','#c86cff','#6cefff','#ffef6c','#ff8f6c'];
+let sortState = { competitors: { col: 'views', dir: 'desc' }, trends: { col: 'views', dir: 'desc' } };
+
+const competitors = RAW.filter(r => r.source === 'channel');
+const trends = RAW.filter(r => r.source !== 'channel');
+
+// Assign colors to channels
+[...new Set(RAW.map(r => r.channel))].forEach((ch, i) => {
+  CHANNEL_COLORS[ch] = PALETTE[i % PALETTE.length];
+});
+
+function fmtNum(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n/1000).toFixed(1) + 'K';
+  return n.toString();
+}
+
+function channelBadge(ch) {
+  const color = CHANNEL_COLORS[ch] || '#888';
+  return `<span class="channel-badge" style="background:${color}22;color:${color}">${ch}</span>`;
+}
+
+// Summary cards
+function buildCards() {
+  const totalVideos = RAW.length;
+  const channels = [...new Set(competitors.map(r => r.channel))];
+  const topVideo = [...competitors].sort((a,b) => b.views - a.views)[0];
+  const avgViews = competitors.length ? Math.round(competitors.reduce((s,r) => s + r.views, 0) / competitors.length) : 0;
+
+  document.getElementById('summary-cards').innerHTML = `
+    <div class="card"><div class="label">Total Videos</div><div class="value">${totalVideos}</div><div class="sub">across all sources</div></div>
+    <div class="card"><div class="label">Channels Tracked</div><div class="value">${channels.length}</div><div class="sub">${channels.join(', ')}</div></div>
+    <div class="card"><div class="label">Top Video Views</div><div class="value">${fmtNum(topVideo?.views || 0)}</div><div class="sub">${topVideo?.channel || ''}</div></div>
+    <div class="card"><div class="label">Avg Views / Video</div><div class="value">${fmtNum(avgViews)}</div><div class="sub">competitor channels</div></div>
+  `;
+}
+
+// Populate filter dropdowns
+function buildFilters() {
+  const compChannels = [...new Set(competitors.map(r => r.channel))].sort();
+  const sel1 = document.getElementById('comp-channel');
+  compChannels.forEach(ch => sel1.innerHTML += `<option value="${ch}">${ch}</option>`);
+
+  const keywords = [...new Set(trends.map(r => r.source))].sort();
+  const sel2 = document.getElementById('trend-keyword');
+  keywords.forEach(kw => sel2.innerHTML += `<option value="${kw}">${kw.replace('search: ','')}</option>`);
+}
+
+function sortTable(table, col) {
+  const state = sortState[table];
+  state.dir = (state.col === col && state.dir === 'desc') ? 'asc' : 'desc';
+  state.col = col;
+  table === 'competitors' ? renderCompetitors() : renderTrends();
+}
+
+function applySort(data, col, dir) {
+  return [...data].sort((a, b) => {
+    let av = a[col], bv = b[col];
+    if (typeof av === 'string') return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+    return dir === 'asc' ? av - bv : bv - av;
+  });
+}
+
+function updateSortHeaders(tableId, col, dir) {
+  document.querySelectorAll(`#${tableId} th`).forEach(th => {
+    th.classList.remove('sorted-asc','sorted-desc');
+    if (th.textContent.trim().toLowerCase().startsWith(col.toLowerCase())) {
+      th.classList.add(dir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+    }
+  });
+}
+
+function renderCompetitors() {
+  const search = document.getElementById('comp-search').value.toLowerCase();
+  const channel = document.getElementById('comp-channel').value;
+  const { col, dir } = sortState.competitors;
+
+  let data = competitors.filter(r =>
+    (!channel || r.channel === channel) &&
+    (!search || r.title.toLowerCase().includes(search))
+  );
+  data = applySort(data, col, dir);
+
+  document.getElementById('comp-count').textContent = `${data.length} videos`;
+  updateSortHeaders('comp-table', col, dir);
+
+  document.getElementById('comp-body').innerHTML = data.map(r => `
+    <tr>
+      <td class="title-cell"><a href="${r.url}" target="_blank">${r.title}</a></td>
+      <td>${channelBadge(r.channel)}</td>
+      <td class="views">${fmtNum(r.views)}</td>
+      <td>${fmtNum(r.likes)}</td>
+      <td>${fmtNum(r.comments)}</td>
+      <td class="date">${r.published_at}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" class="empty">No results</td></tr>';
+}
+
+function renderTrends() {
+  const search = document.getElementById('trend-search').value.toLowerCase();
+  const keyword = document.getElementById('trend-keyword').value;
+  const { col, dir } = sortState.trends;
+
+  let data = trends.filter(r =>
+    (!keyword || r.source === keyword) &&
+    (!search || r.title.toLowerCase().includes(search))
+  );
+  data = applySort(data, col, dir);
+
+  document.getElementById('trend-count').textContent = `${data.length} videos`;
+  updateSortHeaders('trend-table', col, dir);
+
+  document.getElementById('trend-body').innerHTML = data.map(r => `
+    <tr>
+      <td class="title-cell"><a href="${r.url}" target="_blank">${r.title}</a></td>
+      <td>${channelBadge(r.channel)}</td>
+      <td><span style="color:#888;font-size:12px">${r.source.replace('search: ','')}</span></td>
+      <td class="views">${fmtNum(r.views)}</td>
+      <td>${fmtNum(r.likes)}</td>
+      <td class="date">${r.published_at}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" class="empty">No results</td></tr>';
+}
+
+function buildCharts() {
+  const channels = [...new Set(competitors.map(r => r.channel))];
+  const avgViews = channels.map(ch => {
+    const vids = competitors.filter(r => r.channel === ch);
+    return Math.round(vids.reduce((s,r) => s+r.views,0) / vids.length);
+  });
+  const videoCounts = channels.map(ch => competitors.filter(r => r.channel === ch).length);
+  const colors = channels.map(ch => CHANNEL_COLORS[ch] || '#888');
+
+  new Chart(document.getElementById('chart-avg-views'), {
+    type: 'bar',
+    data: { labels: channels, datasets: [{ data: avgViews, backgroundColor: colors, borderRadius: 6 }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888' }, grid: { color: '#1e1e28' } }, y: { ticks: { color: '#888', callback: v => fmtNum(v) }, grid: { color: '#1e1e28' } } } }
+  });
+
+  new Chart(document.getElementById('chart-video-count'), {
+    type: 'bar',
+    data: { labels: channels, datasets: [{ data: videoCounts, backgroundColor: colors, borderRadius: 6 }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888' }, grid: { color: '#1e1e28' } }, y: { ticks: { color: '#888' }, grid: { color: '#1e1e28' } } } }
+  });
+
+  const top10 = applySort(trends, 'views', 'desc').slice(0, 10);
+  new Chart(document.getElementById('chart-top-trends'), {
+    type: 'bar',
+    indexAxis: 'y',
+    data: {
+      labels: top10.map(r => r.title.length > 50 ? r.title.slice(0,50)+'...' : r.title),
+      datasets: [{ data: top10.map(r => r.views), backgroundColor: '#6c8fff88', borderColor: '#6c8fff', borderWidth: 1, borderRadius: 4 }]
+    },
+    options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888', callback: v => fmtNum(v) }, grid: { color: '#1e1e28' } }, y: { ticks: { color: '#ccc', font: { size: 11 } }, grid: { display: false } } } }
+  });
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['competitors','trends','charts'][i] === name));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+buildCards();
+buildFilters();
+renderCompetitors();
+renderTrends();
+buildCharts();
+</script>
+</body>
+</html>
