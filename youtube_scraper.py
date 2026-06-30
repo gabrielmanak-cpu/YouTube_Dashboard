@@ -24,12 +24,16 @@ from googleapiclient.discovery import build
 API_KEY = os.environ.get("YOUTUBE_API_KEY", "")
 
 CHANNELS = [
-    # Competitors
+    # Software competitors
     "@Housecallpro",
     "@Jobber",
     "@ServiceTitan",
     "@workiz",
-    # High-performing trades creators (in-niche, successful)
+    "@MyQuoteIQ",
+]
+
+INSPIRATION_CHANNELS = [
+    # High-performing trades creators (feeds Trending Trades tab)
     "@ElectricianU",
     "@OhYouBetcha",
     "@CarlMurawski",
@@ -511,13 +515,26 @@ def main():
     all_rows = []
 
     # Pull competitor channel videos
-    print("Pulling channel data...")
+    print("Pulling competitor channel data...")
     for handle in CHANNELS:
         print(f"  {handle}")
         channel_id, channel_name = resolve_channel_id(youtube, handle)
         if not channel_id:
             continue
         videos = get_recent_videos(youtube, channel_id, channel_name, VIDEOS_PER_CHANNEL)
+        print(f"    {len(videos)} videos found")
+        all_rows.extend(videos)
+
+    # Pull inspiration channels (trades creators — feeds Trending Trades tab)
+    print("Pulling inspiration channel data...")
+    for handle in INSPIRATION_CHANNELS:
+        print(f"  {handle}")
+        channel_id, channel_name = resolve_channel_id(youtube, handle)
+        if not channel_id:
+            continue
+        videos = get_recent_videos(youtube, channel_id, channel_name, VIDEOS_PER_CHANNEL)
+        for v in videos:
+            v["source"] = f"inspiration: {channel_name}"
         print(f"    {len(videos)} videos found")
         all_rows.extend(videos)
 
