@@ -25,7 +25,7 @@ API_KEY = os.environ.get("YOUTUBE_API_KEY", "")
 
 CHANNELS = [
     # Software competitors
-    "@Housecallpro",
+    "@HousecallPro",
     "@Jobber",
     "@ServiceTitan",
     "@workiz",
@@ -35,7 +35,6 @@ CHANNELS = [
 INSPIRATION_CHANNELS = [
     # High-performing trades creators (feeds Trending Trades tab)
     "@ElectricianU",
-    "@OhYouBetcha",
     "@CarlMurawski",
 ]
 
