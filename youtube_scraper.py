@@ -25,7 +25,7 @@ API_KEY = os.environ.get("YOUTUBE_API_KEY", "")
 
 CHANNELS = [
     # Software competitors
-    "@HousecallPro",
+    "UCmA0PaDYqW2J2tJR56Mk91A"  # Housecall Pro (channel ID — handle resolution broken),
     "@Jobber",
     "@ServiceTitan",
     "@workiz",
@@ -74,11 +74,19 @@ def get_youtube_client():
 
 
 def resolve_channel_id(youtube, handle):
-    """Convert a @handle to a channel ID."""
-    response = youtube.channels().list(
-        part="id,snippet",
-        forHandle=handle.lstrip("@")
-    ).execute()
+    """Convert a @handle or channel ID (UC...) to a channel ID + name."""
+    handle_clean = handle.lstrip("@").split("#")[0].strip()
+    if handle_clean.startswith("UC"):
+        # Already a channel ID — just fetch the name
+        response = youtube.channels().list(
+            part="id,snippet",
+            id=handle_clean
+        ).execute()
+    else:
+        response = youtube.channels().list(
+            part="id,snippet",
+            forHandle=handle_clean
+        ).execute()
     items = response.get("items", [])
     if not items:
         print(f"  Could not find channel: {handle}")
