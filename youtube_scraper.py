@@ -25,7 +25,7 @@ API_KEY = os.environ.get("YOUTUBE_API_KEY", "")
 
 CHANNELS = [
     # Software competitors
-    "UCmA0PaDYqW2J2tJR56Mk91A"  # Housecall Pro (channel ID — handle resolution broken),
+    "UCmA0PaDYqW2J2tJR56Mk91A",  # Housecall Pro channel ID
     "@Jobber",
     "@ServiceTitan",
     "@workiz",
